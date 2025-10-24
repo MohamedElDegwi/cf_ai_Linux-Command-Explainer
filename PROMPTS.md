@@ -6,3 +6,5 @@ assignement requirements.
 **Third Prompt**: "Now how to make this code here render Mark down properly?"... refering to index.html.
 
 **Forth Prompt**: "Here is chat.js content... what percisely need to be changed?"... providing chat.js content.
+
+**Fifth Prompt**: "Great.. now how to make LLM responses more formated instead of continues text?"... provide an example of current LLM response
