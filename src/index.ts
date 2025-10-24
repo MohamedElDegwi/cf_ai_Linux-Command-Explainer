@@ -1,26 +1,28 @@
-/**
- * LLM Chat Application Template
- *
- * A simple chat application using Cloudflare Workers AI.
- * This template demonstrates how to implement an LLM-powered chat interface with
- * streaming responses using Server-Sent Events (SSE).
- *
- * @license MIT
- */
 import { Env, ChatMessage } from "./types";
 
-// Model ID for Workers AI model
-// https://developers.cloudflare.com/workers-ai/models/
 const MODEL_ID = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-// Default system prompt
-const SYSTEM_PROMPT =
-	"You are a helpful, friendly assistant. Provide concise and accurate responses.";
+const SYSTEM_PROMPT = `You are a specialized Linux command expert. Your SOLE purpose is to analyze user input and provide explanations for Linux commands. You MUST follow these rules precisely:
+
+1.  **Analyze Input:** Check if the user's message is a valid Linux command (e.g., "ls -la", "grep", "tar").
+
+2.  **If it IS a valid command:**
+    Respond *only* with the following Markdown structure:
+    **Command:** \`[the_command]\`
+    **Summary:** [Brief, one-sentence explanation.]
+    **Components:** [Explain the command and its specific flags/arguments. If no flags, just explain the command.]
+    **Common Use Cases:** [Provide 2-3 bulleted examples of how to use it.]
+    **Alternatives:** [List 1-2 alternative commands that do similar things.]
+
+3.  **If it is NOT a valid command:**
+    (e.g., "hello", "what is your name?", "how do I copy a file?", "lsssp")
+    Do NOT answer the question.
+    Respond *only* with the following structure:
+    I don't recognize that as a Linux command. My only job is to explain linux commands.
+    Based on your input, perhaps you meant \`[your_best_guess_command]\`?
+`;
 
 export default {
-	/**
-	 * Main request handler for the Worker
-	 */
 	async fetch(
 		request: Request,
 		env: Env,
@@ -28,41 +30,33 @@ export default {
 	): Promise<Response> {
 		const url = new URL(request.url);
 
-		// Handle static assets (frontend)
 		if (url.pathname === "/" || !url.pathname.startsWith("/api/")) {
 			return env.ASSETS.fetch(request);
 		}
 
-		// API Routes
 		if (url.pathname === "/api/chat") {
-			// Handle POST requests for chat
+
 			if (request.method === "POST") {
 				return handleChatRequest(request, env);
 			}
 
-			// Method not allowed for other request types
 			return new Response("Method not allowed", { status: 405 });
 		}
 
-		// Handle 404 for unmatched routes
 		return new Response("Not found", { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;
 
-/**
- * Handles chat API requests
- */
+
 async function handleChatRequest(
 	request: Request,
 	env: Env,
 ): Promise<Response> {
 	try {
-		// Parse JSON request body
 		const { messages = [] } = (await request.json()) as {
 			messages: ChatMessage[];
 		};
 
-		// Add system prompt if not present
 		if (!messages.some((msg) => msg.role === "system")) {
 			messages.unshift({ role: "system", content: SYSTEM_PROMPT });
 		}
@@ -75,16 +69,9 @@ async function handleChatRequest(
 			},
 			{
 				returnRawResponse: true,
-				// Uncomment to use AI Gateway
-				// gateway: {
-				//   id: "YOUR_GATEWAY_ID", // Replace with your AI Gateway ID
-				//   skipCache: false,      // Set to true to bypass cache
-				//   cacheTtl: 3600,        // Cache time-to-live in seconds
-				// },
-			},
+			}
 		);
 
-		// Return streaming response
 		return response;
 	} catch (error) {
 		console.error("Error processing chat request:", error);
