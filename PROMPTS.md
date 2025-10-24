@@ -106,3 +106,7 @@ i got those errors
 [wrangler:info] POST /api/chat 503 Service Unavailable (6ms)
 "
 **Twelvth Prompt**: "Great! now everything is working properly. but i have a concern. any user will not lose now their chat history if internet disconnect or page refresh or smth.. but once they are done they will never have acess to that chat again forever... since each new tab has new session by default.. those history will be accessable as long as this tab is open.. once closed.. it will be lost forever.. by lost i mean not accessable by user anymore..am i right?"
+
+**Thirteenth Prompt**: "Good! I guess that what we want. but I think system prompt is way too strict.. user cant have conversation about his commands or have any conversation with the LLM... just commands.. can we ease it a bit to make user have queries around linux commands and provie linux commands only.. anything outside that the LLM respond with "sorry i can only explain and have disscussion about linux commands. this is seams to be out of my scope".. would make the conversation going better or there is something i miss here?"
+
+**forteenth Prompt**: "Great! LGTM! thanks"
