@@ -43,6 +43,27 @@ export default {
 			return env.ASSETS.fetch(request);
 		}
 
+		if (url.pathname === "/api/history") {
+            const sessionId = url.searchParams.get("sessionId");
+            if (!sessionId) {
+                return new Response("Missing sessionId", { status: 400 });
+            }
+
+            try {
+                const { results } = await env.DB.prepare(
+                    "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
+                )
+                    .bind(sessionId)
+                    .all<ChatMessage>();
+
+                return Response.json(results || []);
+            } catch (e) {
+                return new Response(`Error fetching history: ${(e as Error).message}`, {
+                    status: 500,
+                });
+            }
+        }
+
 		if (url.pathname === "/api/chat") {
 
 			if (request.method === "POST") {
@@ -62,34 +83,59 @@ async function handleChatRequest(
 	env: Env,
 ): Promise<Response> {
 	try {
-		const { messages = [] } = (await request.json()) as {
-			messages: ChatMessage[];
+		const { message, sessionId } = (await request.json()) as {
+			message: string;
+			sessionId: string
+
 		};
 
-		if (!messages.some((msg) => msg.role === "system")) {
-			messages.unshift({ role: "system", content: SYSTEM_PROMPT });
-		}
+		if (!message || !sessionId) {
+            return new Response("Missing message or sessionId", { status: 400 });
+        }
 
-		const response = await env.AI.run(
-			MODEL_ID,
-			{
-				messages,
-				max_tokens: 1024,
-			},
-			{
-				returnRawResponse: true,
-			}
-		);
+		await env.DB.prepare(
+            "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+        )
+            .bind(sessionId, "user", message, Date.now())
+            .run();
 
-		return response;
-	} catch (error) {
-		console.error("Error processing chat request:", error);
-		return new Response(
-			JSON.stringify({ error: "Failed to process request" }),
-			{
-				status: 500,
-				headers: { "content-type": "application/json" },
-			},
-		);
-	}
+        const { results } = await env.DB.prepare(
+            "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
+        )
+            .bind(sessionId)
+            .all<ChatMessage>();
+
+        const history: ChatMessage[] = results || [];
+
+        const messagesForAI: ChatMessage[] = [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...history,
+        ];
+
+        const aiResponse = (await env.AI.run(MODEL_ID, {
+            messages: messagesForAI,
+            stream: false,
+        })) as { response: string };
+
+        const aiMessage = aiResponse.response || "Sorry, I had an error.";
+
+        await env.DB.prepare(
+            "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+        )
+            .bind(sessionId, "assistant", aiMessage, Date.now())
+            .run();
+
+        return Response.json({
+            response: aiMessage,
+        });
+    } catch (error) {
+        console.error("Error processing chat request:", error);
+        return new Response(
+            JSON.stringify({ error: "Failed to process request" }),
+            {
+                status: 500,
+                headers: { "content-type": "application/json" },
+            },
+        );
+    }
 }

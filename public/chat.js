@@ -3,14 +3,37 @@ const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 const typingIndicator = document.getElementById("typing-indicator");
 
-let chatHistory = [
-	{
-		role: "assistant",
-		content:
-			"Hello! I'm Linux Command Explainer powered by Cloudflare Workers AI. which command can I help you with today?",
-	},
-];
+let sessionId = localStorage.getItem("sessionId");
+if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+}
+
 let isProcessing = false;
+
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch(`/api/history?sessionId=${sessionId}`);
+        if (!response.ok) {
+            throw new Error("Failed to fetch history");
+        }
+        const history = await response.json();
+
+        chatMessages.innerHTML = "";
+        
+        history.forEach((msg) => {
+            addMessageToChat(msg.role, msg.content);
+        });
+
+        if (history.length === 0) {
+             addMessageToChat("assistant", "Hello! I'm The Linux Command Explainer. Which command can I help you with today?");
+        }
+
+    } catch (error) {
+        console.error("Error loading history:", error);
+        addMessageToChat("assistant", "Error loading previous chat.");
+    }
+});
 
 userInput.addEventListener("input", function () {
 	this.style.height = "auto";
@@ -42,22 +65,15 @@ async function sendMessage() {
 
 	typingIndicator.classList.add("visible");
 
-	chatHistory.push({ role: "user", content: message });
-
 	try {
-		const assistantMessageEl = document.createElement("div");
-		assistantMessageEl.className = "message assistant-message";
-		chatMessages.appendChild(assistantMessageEl);
-
-		chatMessages.scrollTop = chatMessages.scrollHeight;
-
 		const response = await fetch("/api/chat", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
 			body: JSON.stringify({
-				messages: chatHistory,
+				message: message,
+				sessionId: sessionId,
 			}),
 		});
 
@@ -65,39 +81,11 @@ async function sendMessage() {
 			throw new Error("Failed to get response");
 		}
 
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let responseText = "";
+		const data = await response.json();
+        const aiMessage = data.response;
 
-		while (true) {
-			const { done, value } = await reader.read();
+		addMessageToChat("assistant", aiMessage);
 
-			if (done) {
-				break;
-			}
-
-			const chunk = decoder.decode(value, { stream: true });
-
-			const lines = chunk.split("\n");
-			for (const line of lines) {
-				try {
-					const jsonData = JSON.parse(line);
-					if (jsonData.response) {
-						responseText += jsonData.response;
-						
-						const rawHtml = marked.parse(responseText);
-                        const cleanHtml = DOMPurify.sanitize(rawHtml);
-                        assistantMessageEl.innerHTML = cleanHtml;
-
-						chatMessages.scrollTop = chatMessages.scrollHeight;
-					}
-				} catch (e) {
-					console.error("Error parsing JSON:", e);
-				}
-			}
-		}
-
-		chatHistory.push({ role: "assistant", content: responseText });
 	} catch (error) {
 		console.error("Error:", error);
 		addMessageToChat(
