@@ -47,7 +47,6 @@ async function sendMessage() {
 	try {
 		const assistantMessageEl = document.createElement("div");
 		assistantMessageEl.className = "message assistant-message";
-		assistantMessageEl.innerHTML = "<p></p>";
 		chatMessages.appendChild(assistantMessageEl);
 
 		chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -85,7 +84,10 @@ async function sendMessage() {
 					const jsonData = JSON.parse(line);
 					if (jsonData.response) {
 						responseText += jsonData.response;
-						assistantMessageEl.querySelector("p").textContent = responseText;
+						
+						const rawHtml = marked.parse(responseText);
+                        const cleanHtml = DOMPurify.sanitize(rawHtml);
+                        assistantMessageEl.innerHTML = cleanHtml;
 
 						chatMessages.scrollTop = chatMessages.scrollHeight;
 					}
@@ -115,8 +117,22 @@ async function sendMessage() {
 function addMessageToChat(role, content) {
 	const messageEl = document.createElement("div");
 	messageEl.className = `message ${role}-message`;
-	messageEl.innerHTML = `<p>${content}</p>`;
-	chatMessages.appendChild(messageEl);
 
+	if (role === "user") {
+        const p = document.createElement("p");
+        p.textContent = content;
+        messageEl.appendChild(p);
+    } else {
+        const rawHtml = marked.parse(content);
+        messageEl.innerHTML = DOMPurify.sanitize(rawHtml);
+    }
+
+	chatMessages.appendChild(messageEl);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const firstMessage = chatHistory[0];
+    
+    addMessageToChat(firstMessage.role, firstMessage.content);
+});

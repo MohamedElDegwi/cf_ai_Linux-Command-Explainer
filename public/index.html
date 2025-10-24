@@ -3,6 +3,8 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    	<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 		<title>Linux Command Explainer</title>
 		<style>
 			:root {
@@ -80,6 +82,29 @@
 				align-self: flex-start;
 			}
 
+			.assistant-message strong {
+                color: var(--text-color);
+            }
+            
+            .assistant-message code {
+                background-color: #e5e7eb;
+                padding: 0.2em 0.4em;
+                margin: 0;
+                font-size: 85%;
+                border-radius: 6px;
+                font-family: "Courier New", Courier, monospace;
+            }
+
+            .assistant-message ul {
+                padding-left: 20px;
+                margin-top: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .assistant-message li {
+                margin-bottom: 0.25rem;
+            }
+
 			.message-input {
 				display: flex;
 				padding: 0.75rem;
@@ -144,12 +169,6 @@
 
 		<div class="chat-container">
 			<div id="chat-messages" class="chat-messages">
-				<div class="message assistant-message">
-					<p>
-						Hello! I'm The Linux Command Explainer. Which command
-						you need help with?
-					</p>
-				</div>
 			</div>
 
 			<div class="typing-indicator" id="typing-indicator">
@@ -171,7 +190,6 @@
 			<p>Cloudflare Workers AI Chat Template &copy; 2025</p>
 		</footer>
 
-		<!-- Chat app script -->
 		<script src="chat.js"></script>
 	</body>
 </html>
